@@ -1,11 +1,6 @@
-"use client";
-
-import dynamic from "next/dynamic";
 import { Header } from "@/components/header";
 import { ApiStats } from "@/components/api-stats";
-
-const SwaggerUI = dynamic(() => import("swagger-ui-react"), { ssr: false });
-import "swagger-ui-react/swagger-ui.css";
+import { SwaggerUIComponent } from "@/components/swagger-ui";
 
 export default function ApiDocsPage() {
   return (
@@ -29,7 +24,7 @@ export default function ApiDocsPage() {
 
         {/* API Documentation */}
         <div className="mt-12 rounded-lg border border-border bg-card p-6">
-          <SwaggerUI url="/swagger.yaml" />
+          <SwaggerUIComponent />
         </div>
       </main>
 
