@@ -1,0 +1,355 @@
+openapi: 3.1.0
+info:
+  title: Gatcha API
+  version: 1.0.0
+  description: Gamification backend for Microsoft Teams app
+
+servers:
+  - url: https://api.gatcha.app/v1
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Clans
+  - name: Assignments
+  - name: Leaderboard
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  /auth/teams:
+    post:
+      tags: [Auth]
+      summary: Exchange Teams token for API JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [teamsToken]
+              properties:
+                teamsToken:
+                  type: string
+      responses:
+        "200":
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDto"
+
+  /clans:
+    get:
+      tags: [Clans]
+      summary: Get all clans
+      responses:
+        "200":
+          description: List of clans
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClanListResponse"
+
+    post:
+      tags: [Clans]
+      summary: Create clan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        "201":
+          description: Clan created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClanDto"
+
+  /clans/{id}/join:
+    post:
+      tags: [Clans]
+      summary: Join clan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Joined
+
+  /clans/{id}/leave:
+    post:
+      tags: [Clans]
+      summary: Leave clan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Left clan
+
+  /assignments/current:
+    get:
+      tags: [Assignments]
+      summary: Get current assignment
+      responses:
+        "200":
+          description: Current assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentAssignmentResponse"
+
+  /assignments/{id}/complete:
+    post:
+      tags: [Assignments]
+      summary: Complete assignment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteAssignmentRequest"
+      responses:
+        "204":
+          description: Assignment completed
+
+  /assignments/reroll:
+    post:
+      tags: [Assignments]
+      summary: Reroll assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RerollRequest"
+      responses:
+        "200":
+          description: New assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignmentDto"
+
+  /leaderboard/users:
+    get:
+      tags: [Leaderboard]
+      summary: Daily user leaderboard
+      responses:
+        "200":
+          description: Leaderboard users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardUsersResponse"
+
+  /leaderboard/clans:
+    get:
+      tags: [Leaderboard]
+      summary: Daily clan leaderboard
+      responses:
+        "200":
+          description: Leaderboard clans
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardClansResponse"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    Role:
+      type: string
+      enum: [admin, player]
+
+    AssignmentStatus:
+      type: string
+      enum: [pending, completed, expired]
+
+    UserDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        role:
+          $ref: "#/components/schemas/Role"
+        clanId:
+          type: string
+          format: uuid
+          nullable: true
+
+    ClanDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        membersCount:
+          type: integer
+        todayScore:
+          type: integer
+
+    AssignmentParticipantDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+
+    AssignmentDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/AssignmentStatus"
+        canReroll:
+          type: boolean
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssignmentParticipantDto"
+
+    LeaderboardUserDto:
+      type: object
+      properties:
+        rank:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        points:
+          type: integer
+
+    LeaderboardClanDto:
+      type: object
+      properties:
+        rank:
+          type: integer
+        clanId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        points:
+          type: integer
+
+    CompleteAssignmentRequest:
+      type: object
+      properties:
+        proof:
+          type: string
+          nullable: true
+
+    RerollRequest:
+      type: object
+      required: [assignmentId]
+      properties:
+        assignmentId:
+          type: string
+          format: uuid
+
+    CurrentAssignmentResponse:
+      type: object
+      properties:
+        assignment:
+          $ref: "#/components/schemas/AssignmentDto"
+
+    ClanListResponse:
+      type: object
+      properties:
+        clans:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClanDto"
+
+    LeaderboardUsersResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardUserDto"
+
+    LeaderboardClansResponse:
+      type: object
+      properties:
+        clans:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardClanDto"
