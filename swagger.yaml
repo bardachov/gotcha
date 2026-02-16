@@ -9,123 +9,176 @@ servers:
 
 tags:
   - name: Auth
-  - name: Users
-  - name: Clans
-  - name: Assignments
-  - name: Leaderboard
+  - name: SuperAdmin
+  - name: GameAdmin
+  - name: Player
 
 security:
   - bearerAuth: []
 
 paths:
 
-  /auth/teams:
+  /auth/login:
     post:
       tags: [Auth]
-      summary: Exchange Teams token for API JWT
-      security: []
+      summary: Validate Azure token and issue app JWT
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [teamsToken]
-              properties:
-                teamsToken:
-                  type: string
+              $ref: "#/components/schemas/LoginRequest"
       responses:
         "200":
           description: JWT issued
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  accessToken:
-                    type: string
+                $ref: "#/components/schemas/LoginResponse"
 
-  /users/me:
-    get:
-      tags: [Users]
-      summary: Get current user profile
-      responses:
-        "200":
-          description: User profile
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserDto"
-
-  /clans:
-    get:
-      tags: [Clans]
-      summary: Get all clans
-      responses:
-        "200":
-          description: List of clans
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ClanListResponse"
-
+  /companies:
     post:
-      tags: [Clans]
-      summary: Create clan
+      tags: [SuperAdmin]
+      summary: Create a new company tenant
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [name]
-              properties:
-                name:
-                  type: string
-                description:
-                  type: string
+              $ref: "#/components/schemas/CreateCompanyRequest"
       responses:
         "201":
-          description: Clan created
+          description: Company created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ClanDto"
-
-  /clans/{id}/join:
-    post:
-      tags: [Clans]
-      summary: Join clan
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "204":
-          description: Joined
-
-  /clans/{id}/leave:
-    post:
-      tags: [Clans]
-      summary: Leave clan
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "204":
-          description: Left clan
-
-  /assignments/current:
+                $ref: "#/components/schemas/CompanyDto"
     get:
-      tags: [Assignments]
-      summary: Get current assignment
+      tags: [SuperAdmin]
+      summary: List all companies
+      responses:
+        "200":
+          description: Companies list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompaniesResponse"
+
+  /companies/stats:
+    get:
+      tags: [SuperAdmin]
+      summary: Global stats
+      responses:
+        "200":
+          description: Global platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlobalStatsResponse"
+
+  /games/dashboard:
+    get:
+      tags: [GameAdmin]
+      summary: Dashboard stats and recent activity
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameDashboardResponse"
+
+  /games:
+    post:
+      tags: [GameAdmin]
+      summary: Create a new game context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGameRequest"
+      responses:
+        "201":
+          description: Game created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameDto"
+
+  /games/{gameId}/players/csv:
+    post:
+      tags: [GameAdmin]
+      summary: Upload players CSV
+      parameters:
+        - in: path
+          name: gameId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/UploadPlayersCsvRequest"
+      responses:
+        "200":
+          description: CSV processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadPlayersCsvResponse"
+
+  /games/{gameId}/missions:
+    post:
+      tags: [GameAdmin]
+      summary: Create a mission template
+      parameters:
+        - in: path
+          name: gameId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMissionTemplateRequest"
+      responses:
+        "201":
+          description: Mission template created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissionTemplateDto"
+
+  /games/{gameId}/start:
+    post:
+      tags: [GameAdmin]
+      summary: Start the game and assign missions
+      parameters:
+        - in: path
+          name: gameId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Game started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartGameResponse"
+
+  /me/assignment:
+    get:
+      tags: [Player]
+      summary: Get current active assignment
       responses:
         "200":
           description: Current assignment
@@ -136,8 +189,8 @@ paths:
 
   /assignments/{id}/complete:
     post:
-      tags: [Assignments]
-      summary: Complete assignment
+      tags: [Player]
+      summary: Mark mission as done
       parameters:
         - in: path
           name: id
@@ -155,16 +208,23 @@ paths:
         "204":
           description: Assignment completed
 
-  /assignments/reroll:
+  /assignments/{id}/reroll:
     post:
-      tags: [Assignments]
-      summary: Reroll assignment
+      tags: [Player]
+      summary: Request a mission reroll
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RerollRequest"
+              $ref: "#/components/schemas/RerollAssignmentRequest"
       responses:
         "200":
           description: New assignment
@@ -173,29 +233,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/AssignmentDto"
 
-  /leaderboard/users:
+  /me/approvals:
     get:
-      tags: [Leaderboard]
-      summary: Daily user leaderboard
+      tags: [Player]
+      summary: Get assignments pending my approval
       responses:
         "200":
-          description: Leaderboard users
+          description: Pending approvals
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LeaderboardUsersResponse"
+                $ref: "#/components/schemas/ApprovalsResponse"
 
-  /leaderboard/clans:
-    get:
-      tags: [Leaderboard]
-      summary: Daily clan leaderboard
+  /assignments/{id}/verify:
+    post:
+      tags: [Player]
+      summary: Verify a completed mission
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyAssignmentRequest"
       responses:
-        "200":
-          description: Leaderboard clans
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LeaderboardClansResponse"
+        "204":
+          description: Verification recorded
 
 components:
 
@@ -207,33 +276,30 @@ components:
 
   schemas:
 
-    Role:
-      type: string
-      enum: [admin, player]
+    LoginRequest:
+      type: object
+      required: [azureToken]
+      properties:
+        azureToken:
+          type: string
 
-    AssignmentStatus:
-      type: string
-      enum: [pending, completed, expired]
-
-    UserDto:
+    LoginResponse:
       type: object
       properties:
-        id:
+        accessToken:
           type: string
-          format: uuid
-        displayName:
+
+    CreateCompanyRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
           type: string
-        avatarUrl:
+        description:
           type: string
-          nullable: true
-        role:
-          $ref: "#/components/schemas/Role"
-        clanId:
-          type: string
-          format: uuid
           nullable: true
 
-    ClanDto:
+    CompanyDto:
       type: object
       properties:
         id:
@@ -241,12 +307,62 @@ components:
           format: uuid
         name:
           type: string
-        membersCount:
+        description:
+          type: string
+          nullable: true
+
+    CompaniesResponse:
+      type: object
+      properties:
+        companies:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyDto"
+
+    GlobalStatsResponse:
+      type: object
+      properties:
+        totalPlayers:
           type: integer
-        todayScore:
+        totalGames:
           type: integer
 
-    AssignmentParticipantDto:
+    GameDashboardResponse:
+      type: object
+      properties:
+        activePlayers:
+          type: integer
+        gamesInProgress:
+          type: integer
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityLogDto"
+
+    ActivityLogDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateGameRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    GameDto:
       type: object
       properties:
         id:
@@ -254,11 +370,41 @@ components:
           format: uuid
         name:
           type: string
-        avatarUrl:
+        status:
           type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    UploadPlayersCsvRequest:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+
+    UploadPlayersCsvResponse:
+      type: object
+      properties:
+        createdCount:
+          type: integer
+        skippedCount:
+          type: integer
+
+    CreateMissionTemplateRequest:
+      type: object
+      required: [title, description]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        rewardCoins:
+          type: integer
           nullable: true
 
-    AssignmentDto:
+    MissionTemplateDto:
       type: object
       properties:
         id:
@@ -268,46 +414,46 @@ components:
           type: string
         description:
           type: string
-        expiresAt:
+        rewardCoins:
+          type: integer
+          nullable: true
+
+    StartGameResponse:
+      type: object
+      properties:
+        startedAt:
           type: string
           format: date-time
+        assignmentsCreated:
+          type: integer
+
+    AssignmentStatus:
+      type: string
+      enum: [active, completed, pending_approval, rejected]
+
+    AssignmentDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        targetUserId:
+          type: string
+          format: uuid
+        targetName:
+          type: string
+        missionTitle:
+          type: string
+        missionDescription:
+          type: string
         status:
           $ref: "#/components/schemas/AssignmentStatus"
-        canReroll:
-          type: boolean
-        participants:
-          type: array
-          items:
-            $ref: "#/components/schemas/AssignmentParticipantDto"
 
-    LeaderboardUserDto:
+    CurrentAssignmentResponse:
       type: object
       properties:
-        rank:
-          type: integer
-        userId:
-          type: string
-          format: uuid
-        name:
-          type: string
-        avatarUrl:
-          type: string
-          nullable: true
-        points:
-          type: integer
-
-    LeaderboardClanDto:
-      type: object
-      properties:
-        rank:
-          type: integer
-        clanId:
-          type: string
-          format: uuid
-        name:
-          type: string
-        points:
-          type: integer
+        assignment:
+          $ref: "#/components/schemas/AssignmentDto"
 
     CompleteAssignmentRequest:
       type: object
@@ -316,40 +462,38 @@ components:
           type: string
           nullable: true
 
-    RerollRequest:
+    RerollAssignmentRequest:
       type: object
-      required: [assignmentId]
       properties:
-        assignmentId:
+        reason:
+          type: string
+          nullable: true
+
+    ApprovalAssignmentDto:
+      type: object
+      properties:
+        id:
           type: string
           format: uuid
+        executorName:
+          type: string
+        missionTitle:
+          type: string
+        status:
+          $ref: "#/components/schemas/AssignmentStatus"
 
-    CurrentAssignmentResponse:
+    ApprovalsResponse:
       type: object
       properties:
-        assignment:
-          $ref: "#/components/schemas/AssignmentDto"
-
-    ClanListResponse:
-      type: object
-      properties:
-        clans:
+        assignments:
           type: array
           items:
-            $ref: "#/components/schemas/ClanDto"
+            $ref: "#/components/schemas/ApprovalAssignmentDto"
 
-    LeaderboardUsersResponse:
+    VerifyAssignmentRequest:
       type: object
+      required: [verdict]
       properties:
-        users:
-          type: array
-          items:
-            $ref: "#/components/schemas/LeaderboardUserDto"
-
-    LeaderboardClansResponse:
-      type: object
-      properties:
-        clans:
-          type: array
-          items:
-            $ref: "#/components/schemas/LeaderboardClanDto"
+        verdict:
+          type: string
+          enum: [CONFIRM, REJECT]
